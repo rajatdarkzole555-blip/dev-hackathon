@@ -1,13 +1,31 @@
-import BadgeCard from "../components/BadgeCard";
-import { mockBadges } from "../mockBadges";
+import { useAccount, useReadContract } from 'wagmi';
+import BadgeCard from '../components/BadgeCard';
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../contract';
 
 export default function Dashboard() {
-  const isConnected = true; // TODO: replace with real useAccount() from wagmi
-  const address = "0xMockStudentAddress123"; // TODO: replace with real address
+  const { address, isConnected } = useAccount();
 
-  if (!isConnected) return <p className="empty-state">Please connect your wallet to view your badges.</p>;
+  const { data: badges, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'getBadges',
+    args: [address],
+    query: {
+      enabled: !!address, // only run this when a wallet is actually connected
+    },
+  });
 
-  const badges = mockBadges;
+  if (!isConnected) {
+    return <p className="empty-state">Please connect your wallet to view your badges.</p>;
+  }
+
+  if (isLoading) {
+    return <p className="empty-state">Loading badges...</p>;
+  }
+
+  if (error) {
+    return <p className="empty-state">Error loading badges: {error.shortMessage || error.message}</p>;
+  }
 
   return (
     <div>
@@ -16,7 +34,7 @@ export default function Dashboard() {
         <span className="wallet-dot"></span>
         {address}
       </div>
-      {badges.length === 0 ? (
+      {!badges || badges.length === 0 ? (
         <p className="empty-state">No badges yet.</p>
       ) : (
         <div className="badge-grid">
